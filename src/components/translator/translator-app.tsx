@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { CompareView } from "@/components/translator/compare-view";
 import { DetailTabs } from "@/components/translator/detail-tabs";
+import { TranslatorLogo } from "@/components/translator/translator-logo";
 import { ThemeToggle } from "@/components/translator/theme-toggle";
 import { useLocalDraft } from "@/hooks/use-local-draft";
 import type { DetailTab, PlainLanguageResponse } from "@/lib/types";
@@ -183,9 +184,7 @@ export function TranslatorApp() {
     <main className="mx-auto flex w-full max-w-[92rem] flex-1 flex-col px-4 py-6 sm:px-6 lg:px-8">
       <header className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-start sm:justify-between">
         <div className="max-w-3xl">
-          <p className="muted-copy text-xs font-semibold uppercase tracking-[0.28em]">
-            Plain Language Translator
-          </p>
+          <TranslatorLogo />
           <h1 className="display-copy mt-3 text-4xl leading-tight sm:text-5xl">
             Turn complex writing into plain language.
           </h1>
