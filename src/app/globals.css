@@ -48,6 +48,30 @@ html[data-theme="dark"] {
   --shadow: 0 28px 70px rgba(0, 0, 0, 0.34);
 }
 
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) {
+    color-scheme: dark;
+    --background: #0f1e1b;
+    --foreground: #ecf1ea;
+    --muted: #9caca8;
+    --panel: rgba(19, 34, 31, 0.84);
+    --panel-soft: rgba(18, 31, 29, 0.66);
+    --editor: #132623;
+    --button-surface: rgba(18, 31, 29, 0.78);
+    --button-surface-hover: #18302c;
+    --border: rgba(182, 195, 190, 0.15);
+    --border-strong: rgba(182, 195, 190, 0.28);
+    --accent: #4cb49f;
+    --accent-strong: #7bd3c2;
+    --accent-soft: rgba(76, 180, 159, 0.16);
+    --warning-soft: rgba(216, 175, 77, 0.14);
+    --warning-border: #d8af4d;
+    --success-soft: rgba(103, 145, 127, 0.16);
+    --success-border: #7bc2aa;
+    --shadow: 0 28px 70px rgba(0, 0, 0, 0.34);
+  }
+}
+
 * {
   box-sizing: border-box;
 }
@@ -133,6 +157,63 @@ textarea:focus-visible {
 
 .skeleton-bar {
   background: var(--panel-soft);
+}
+
+.editor-meta-row {
+  border-top: 1px solid var(--border);
+}
+
+.editor-meta {
+  color: color-mix(in srgb, var(--muted) 88%, transparent);
+  font-size: 0.8rem;
+  line-height: 1;
+}
+
+.inline-action-button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1;
+  transition:
+    color 160ms ease,
+    opacity 160ms ease;
+}
+
+.inline-action-button:hover:enabled,
+.inline-action-button[aria-pressed="true"] {
+  color: var(--foreground);
+}
+
+.inline-action-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.icon-action-button {
+  display: inline-flex;
+  height: 2rem;
+  width: 2rem;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  transition:
+    color 160ms ease,
+    background-color 160ms ease,
+    opacity 160ms ease;
+}
+
+.icon-action-button:hover:enabled {
+  background: var(--button-surface);
+  color: var(--foreground);
+}
+
+.icon-action-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
 }
 
 .primary-button {

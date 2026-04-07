@@ -7,7 +7,7 @@ type CompareViewProps = {
 export function CompareView({ result }: CompareViewProps) {
   if (result.compareNotes.length === 0) {
     return (
-      <div className="editor-frame flex min-h-[22rem] items-center justify-center rounded-[28px] p-6 text-center">
+      <div className="flex h-full min-h-[14rem] items-center justify-center p-2 text-center sm:min-h-[18rem]">
         <div className="max-w-sm space-y-2">
           <p className="display-copy text-2xl">No comparison notes yet</p>
           <p className="muted-copy text-sm leading-6">
@@ -19,7 +19,7 @@ export function CompareView({ result }: CompareViewProps) {
   }
 
   return (
-    <div className="editor-frame scroll-soft min-h-[22rem] max-h-[35rem] space-y-4 overflow-auto rounded-[28px] p-4 sm:p-5">
+    <div className="scroll-soft h-full space-y-4 overflow-auto pr-1">
       {result.ambiguityNote ? (
         <div className="status-review rounded-2xl px-4 py-3 text-sm leading-6">
           {result.ambiguityNote}

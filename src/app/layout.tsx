@@ -6,24 +6,6 @@ export const metadata: Metadata = {
   description: "Turn complex writing into plain language.",
 };
 
-const themeBootScript = `
-  (() => {
-    try {
-      const storageKey = "plain-language-translator:theme";
-      const stored = window.localStorage.getItem(storageKey);
-      const theme =
-        stored === "dark" || stored === "light"
-          ? stored
-          : window.matchMedia("(prefers-color-scheme: dark)").matches
-            ? "dark"
-            : "light";
-      document.documentElement.dataset.theme = theme;
-    } catch {
-      document.documentElement.dataset.theme = "light";
-    }
-  })();
-`;
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -31,9 +13,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
-      </head>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );

@@ -1,7 +1,8 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import {
+  loadTheme,
   saveTheme,
   themeStorageKey,
   type ThemeMode,
@@ -31,25 +32,47 @@ function subscribe(listener: () => void) {
       listener();
     }
   };
+  const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+  const onMediaChange = () => {
+    listener();
+  };
 
   window.addEventListener("storage", onStorage);
+  mediaQuery.addEventListener("change", onMediaChange);
 
   return () => {
     listeners.delete(listener);
     window.removeEventListener("storage", onStorage);
+    mediaQuery.removeEventListener("change", onMediaChange);
   };
 }
 
 function getThemeSnapshot(): ThemeMode {
-  if (typeof document === "undefined") {
+  if (typeof window === "undefined") {
     return "light";
   }
 
-  return document.documentElement.dataset.theme === "dark" ? "dark" : "light";
+  const storedTheme = loadTheme();
+
+  if (storedTheme) {
+    return storedTheme;
+  }
+
+  return window.matchMedia("(prefers-color-scheme: dark)").matches
+    ? "dark"
+    : "light";
 }
 
 export function ThemeToggle() {
-  const theme = useSyncExternalStore(subscribe, getThemeSnapshot, () => "light");
+  const theme = useSyncExternalStore<ThemeMode>(
+    subscribe,
+    getThemeSnapshot,
+    () => "light",
+  );
+
+  useEffect(() => {
+    setDocumentTheme(theme);
+  }, [theme]);
 
   function toggleTheme() {
     const nextTheme = theme === "light" ? "dark" : "light";

@@ -7,6 +7,8 @@ import { ThemeToggle } from "@/components/translator/theme-toggle";
 import { useLocalDraft } from "@/hooks/use-local-draft";
 import type { DetailTab, PlainLanguageResponse } from "@/lib/types";
 
+const editorHeightClass = "min-h-[16.5rem] sm:min-h-[20rem] lg:min-h-[22rem]";
+
 function formatCount(value: number) {
   return new Intl.NumberFormat("en-US").format(value);
 }
@@ -33,6 +35,24 @@ function getStatusText(
   return "Paste difficult text on the left and convert it when you are ready.";
 }
 
+function CopyIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="9" y="9" width="10" height="10" rx="2" />
+      <path d="M7 15H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v1" />
+    </svg>
+  );
+}
+
 export function TranslatorApp() {
   const { value: sourceText, setValue: setSourceText, clear } = useLocalDraft("");
   const [result, setResult] = useState<PlainLanguageResponse | null>(null);
@@ -45,6 +65,14 @@ export function TranslatorApp() {
   const abortRef = useRef<AbortController | null>(null);
   const isLoading = isSubmitting || isPending;
   const outputCharacters = result?.plainText.length ?? 0;
+  const outputFooterNote =
+    copyState === "copied"
+      ? "Copied"
+      : copyState === "failed"
+        ? "Copy failed"
+        : result?.usedMock
+          ? "Mock mode"
+          : "";
 
   useEffect(() => {
     return () => {
@@ -170,66 +198,9 @@ export function TranslatorApp() {
       </header>
 
       <section className="surface-panel rounded-[34px] p-4 sm:p-5 lg:p-6">
-        <div className="surface-subtle sticky top-4 z-10 mb-4 rounded-[28px] p-4 sm:p-5">
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              onClick={handleConvert}
-              disabled={!sourceText.trim() || isLoading}
-              className="primary-button rounded-full px-5 py-3 text-sm font-semibold"
-            >
-              {isLoading ? "Converting..." : "Convert to plain language"}
-            </button>
-            <button
-              type="button"
-              onClick={handleClear}
-              disabled={!sourceText && !result}
-              className="ghost-button rounded-full px-4 py-3 text-sm font-medium"
-            >
-              Clear
-            </button>
-            <button
-              type="button"
-              onClick={handleCopy}
-              disabled={!result?.plainText}
-              className="ghost-button rounded-full px-4 py-3 text-sm font-medium"
-            >
-              {copyState === "copied"
-                ? "Copied"
-                : copyState === "failed"
-                  ? "Copy failed"
-                  : "Copy result"}
-            </button>
-            <button
-              type="button"
-              onClick={() => setCompareMode((current) => !current)}
-              disabled={!result}
-              aria-pressed={compareMode}
-              className="ghost-button rounded-full px-4 py-3 text-sm font-medium"
-            >
-              {compareMode ? "Back to result" : "Compare"}
-            </button>
-          </div>
-          <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="muted-copy text-sm leading-6" aria-live="polite" role="status">
-              {getStatusText(result, isLoading, errorMessage)}
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <span className="pill inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em]">
-                Autosaved locally
-              </span>
-              {result ? (
-                <span className="pill inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em]">
-                  {result.usedMock ? "Mock mode" : "OpenRouter"}
-                </span>
-              ) : null}
-            </div>
-          </div>
-        </div>
-
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_5rem_minmax(0,1fr)]">
           <section className="surface-subtle rounded-[30px] p-4 sm:p-5">
-            <div className="mb-4 flex items-center justify-between gap-3">
+            <div className="mb-4">
               <div>
                 <p className="muted-copy text-xs font-semibold uppercase tracking-[0.24em]">
                   Original text
@@ -238,18 +209,20 @@ export function TranslatorApp() {
                   Paste or type the source material.
                 </p>
               </div>
-              <span className="pill rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em]">
-                {formatCount(sourceText.length)} chars
-              </span>
             </div>
-            <div className="editor-frame rounded-[28px] p-4 sm:p-5">
+            <div
+              className={`editor-frame flex ${editorHeightClass} flex-col rounded-[28px] p-4 sm:p-5`}
+            >
               <textarea
                 aria-label="Original text"
                 value={sourceText}
                 onChange={(event) => setSourceText(event.target.value)}
                 placeholder="Paste legal, public, academic, business, or healthcare text here."
-                className="scroll-soft min-h-[24rem] w-full resize-none bg-transparent text-base leading-7 outline-none sm:min-h-[32rem]"
+                className="scroll-soft min-h-0 flex-1 resize-none bg-transparent text-base leading-7 outline-none"
               />
+              <div className="editor-meta-row mt-4 flex items-center justify-end pt-3">
+                <span className="editor-meta">{formatCount(sourceText.length)} chars</span>
+              </div>
             </div>
           </section>
 
@@ -260,7 +233,7 @@ export function TranslatorApp() {
           </div>
 
           <section className="surface-subtle rounded-[30px] p-4 sm:p-5">
-            <div className="mb-4 flex items-center justify-between gap-3">
+            <div className="mb-4">
               <div>
                 <p className="muted-copy text-xs font-semibold uppercase tracking-[0.24em]">
                   Plain language version
@@ -269,49 +242,89 @@ export function TranslatorApp() {
                   Clearer wording with the original meaning intact.
                 </p>
               </div>
-              <span className="pill rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em]">
-                {formatCount(outputCharacters)} chars
-              </span>
             </div>
-
-            {compareMode && result ? (
-              <CompareView result={result} />
-            ) : (
-              <div className="editor-frame rounded-[28px] p-4 sm:p-5">
-                {isLoading ? (
-                  <div className="flex min-h-[24rem] flex-col justify-center gap-3 sm:min-h-[32rem]">
-                    <div className="skeleton-bar h-4 w-3/4 animate-pulse rounded-full" />
-                    <div className="skeleton-bar h-4 w-full animate-pulse rounded-full" />
-                    <div className="skeleton-bar h-4 w-5/6 animate-pulse rounded-full" />
-                    <div className="skeleton-bar h-4 w-2/3 animate-pulse rounded-full" />
-                  </div>
-                ) : errorMessage ? (
-                  <div className="flex min-h-[24rem] items-center justify-center sm:min-h-[32rem]">
-                    <div className="status-review max-w-md rounded-[24px] px-5 py-4 text-sm leading-6">
-                      {errorMessage}
-                    </div>
-                  </div>
-                ) : result ? (
-                  <textarea
-                    aria-label="Plain language version"
-                    readOnly
-                    value={result.plainText}
-                    className="scroll-soft min-h-[24rem] w-full resize-none bg-transparent text-base leading-7 outline-none sm:min-h-[32rem]"
-                  />
+            <div
+              className={`editor-frame flex ${editorHeightClass} flex-col rounded-[28px] p-4 sm:p-5`}
+            >
+              <div className="min-h-0 flex-1">
+                {compareMode && result ? (
+                  <CompareView result={result} />
                 ) : (
-                  <div className="flex min-h-[24rem] items-center justify-center sm:min-h-[32rem]">
-                    <div className="max-w-md text-center">
-                      <p className="display-copy text-3xl">Ready to translate</p>
-                      <p className="muted-copy mt-3 text-sm leading-7">
-                        The result will appear here with a quality check, change
-                        notes, and any unclear source sections that still need
-                        review.
-                      </p>
-                    </div>
-                  </div>
+                  <>
+                    {isLoading ? (
+                      <div className="flex h-full min-h-[14rem] flex-col justify-center gap-3 sm:min-h-[18rem]">
+                        <div className="skeleton-bar h-4 w-3/4 animate-pulse rounded-full" />
+                        <div className="skeleton-bar h-4 w-full animate-pulse rounded-full" />
+                        <div className="skeleton-bar h-4 w-5/6 animate-pulse rounded-full" />
+                        <div className="skeleton-bar h-4 w-2/3 animate-pulse rounded-full" />
+                      </div>
+                    ) : errorMessage ? (
+                      <div className="flex h-full min-h-[14rem] items-center justify-center sm:min-h-[18rem]">
+                        <div className="status-review max-w-md rounded-[24px] px-5 py-4 text-sm leading-6">
+                          {errorMessage}
+                        </div>
+                      </div>
+                    ) : result ? (
+                      <textarea
+                        aria-label="Plain language version"
+                        readOnly
+                        value={result.plainText}
+                        className="scroll-soft min-h-0 h-full w-full resize-none bg-transparent text-base leading-7 outline-none"
+                      />
+                    ) : (
+                      <div className="flex h-full min-h-[14rem] items-center justify-center sm:min-h-[18rem]">
+                        <div className="max-w-md text-center">
+                          <p className="display-copy text-3xl">Ready to translate</p>
+                          <p className="muted-copy mt-3 text-sm leading-7">
+                            {getStatusText(result, isLoading, errorMessage)}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
-            )}
+              <div className="editor-meta-row mt-4 flex flex-wrap items-center justify-end gap-2 pt-3">
+                {outputFooterNote ? (
+                  <span
+                    className="editor-meta mr-auto"
+                    aria-live="polite"
+                    role="status"
+                  >
+                    {outputFooterNote}
+                  </span>
+                ) : null}
+                {result ? (
+                  <button
+                    type="button"
+                    onClick={() => setCompareMode((current) => !current)}
+                    aria-pressed={compareMode}
+                    className="inline-action-button"
+                  >
+                    {compareMode ? "Back to result" : "Compare"}
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={handleCopy}
+                  disabled={!result?.plainText}
+                  className="icon-action-button"
+                  aria-label={
+                    copyState === "copied"
+                      ? "Result copied"
+                      : "Copy plain language result"
+                  }
+                  title={
+                    copyState === "copied"
+                      ? "Result copied"
+                      : "Copy plain language result"
+                  }
+                >
+                  <CopyIcon />
+                </button>
+                <span className="editor-meta">{formatCount(outputCharacters)} chars</span>
+              </div>
+            </div>
 
             {result && !compareMode ? (
               <DetailTabs
@@ -321,6 +334,25 @@ export function TranslatorApp() {
               />
             ) : null}
           </section>
+        </div>
+
+        <div className="mt-5 flex flex-wrap justify-end gap-3 border-t border-[var(--border)] pt-5">
+          <button
+            type="button"
+            onClick={handleClear}
+            disabled={!sourceText && !result}
+            className="ghost-button rounded-full px-4 py-3 text-sm font-medium"
+          >
+            Clear
+          </button>
+          <button
+            type="button"
+            onClick={handleConvert}
+            disabled={!sourceText.trim() || isLoading}
+            className="primary-button rounded-full px-5 py-3 text-sm font-semibold"
+          >
+            {isLoading ? "Converting..." : "Convert to plain language"}
+          </button>
         </div>
       </section>
 
