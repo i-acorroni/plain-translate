@@ -8,7 +8,7 @@ import { ThemeToggle } from "@/components/translator/theme-toggle";
 import { useLocalDraft } from "@/hooks/use-local-draft";
 import type { DetailTab, PlainLanguageResponse } from "@/lib/types";
 
-const editorHeightClass = "min-h-[16.5rem] sm:min-h-[20rem] lg:min-h-[22rem]";
+const editorHeightClass = "h-[16.5rem] sm:h-[20rem] lg:h-[22rem]";
 
 function formatCount(value: number) {
   return new Intl.NumberFormat("en-US").format(value);
@@ -210,7 +210,7 @@ export function TranslatorApp() {
               </div>
             </div>
             <div
-              className={`editor-frame flex ${editorHeightClass} flex-col rounded-[28px] p-4 sm:p-5`}
+              className={`editor-frame flex ${editorHeightClass} flex-col overflow-hidden rounded-[28px] p-4 sm:p-5`}
             >
               <textarea
                 aria-label="Original text"
@@ -243,9 +243,9 @@ export function TranslatorApp() {
               </div>
             </div>
             <div
-              className={`editor-frame flex ${editorHeightClass} flex-col rounded-[28px] p-4 sm:p-5`}
+              className={`editor-frame flex ${editorHeightClass} flex-col overflow-hidden rounded-[28px] p-4 sm:p-5`}
             >
-              <div className="min-h-0 flex-1">
+              <div className="flex min-h-0 flex-1 flex-col">
                 {compareMode && result ? (
                   <CompareView result={result} />
                 ) : (
@@ -268,7 +268,7 @@ export function TranslatorApp() {
                         aria-label="Plain language version"
                         readOnly
                         value={result.plainText}
-                        className="scroll-soft min-h-0 h-full w-full resize-none bg-transparent text-base leading-7 outline-none"
+                        className="scroll-soft min-h-0 flex-1 w-full resize-none bg-transparent text-base leading-7 outline-none"
                       />
                     ) : (
                       <div className="flex h-full min-h-[14rem] items-center justify-center sm:min-h-[18rem]">
