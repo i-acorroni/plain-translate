@@ -1,15 +1,21 @@
-export const qualityCheckLabels = {
-  mainMessageClear: "Main message is clear",
-  structureImproved: "Structure improved",
+export const defaultAudience =
+  "An informed member of the public with no specialist training";
+
+export const qualityChecklistLabels = {
+  mainPointClear: "Main point is clear",
+  actionsClear: "Actions are clear",
+  datesAndDeadlinesPreserved: "Dates and deadlines preserved",
+  legalEffectPreserved: "Legal effect preserved",
   jargonReduced: "Jargon reduced or explained",
-  longSentencesSimplified: "Long sentences simplified",
-  actionPointsEasyToIdentify: "Action points are easy to identify",
-  importantMeaningPreserved: "Important meaning preserved",
+  audienceFit: "Fits the stated audience",
 } as const;
 
-export type QualityCheckKey = keyof typeof qualityCheckLabels;
-export type QualityCheckStatus = "pass" | "review_needed";
-export type QualityChecks = Record<QualityCheckKey, QualityCheckStatus>;
+export type QualityChecklistKey = keyof typeof qualityChecklistLabels;
+export type QualityChecklistStatus = "pass" | "review_needed";
+export type QualityChecklist = Record<
+  QualityChecklistKey,
+  QualityChecklistStatus
+>;
 export type DetailTab = "quality" | "changes" | "unclear";
 
 export interface CompareNote {
@@ -26,10 +32,10 @@ export interface DifficultTerm {
 
 export interface PlainLanguageResponse {
   plainText: string;
-  qualityChecks: QualityChecks;
-  whatChanged: string[];
+  qualityChecklist: QualityChecklist;
+  changeNotes: string[];
   difficultTerms: DifficultTerm[];
-  unclearParts: string[];
+  unclearSections: string[];
   suggestions: string[];
   compareNotes: CompareNote[];
   ambiguityNote?: string;
@@ -39,16 +45,19 @@ export interface PlainLanguageResponse {
 
 export interface RewriteRequest {
   sourceText: string;
+  audience?: string;
+  purpose?: string;
+  documentType?: string;
 }
 
-export const qualityCheckOrder = Object.keys(
-  qualityCheckLabels,
-) as QualityCheckKey[];
+export const qualityChecklistOrder = Object.keys(
+  qualityChecklistLabels,
+) as QualityChecklistKey[];
 
-export function createDefaultQualityChecks(
-  status: QualityCheckStatus = "review_needed",
-): QualityChecks {
+export function createDefaultQualityChecklist(
+  status: QualityChecklistStatus = "review_needed",
+): QualityChecklist {
   return Object.fromEntries(
-    qualityCheckOrder.map((key) => [key, status]),
-  ) as QualityChecks;
+    qualityChecklistOrder.map((key) => [key, status]),
+  ) as QualityChecklist;
 }

@@ -90,6 +90,7 @@ Open `http://localhost:3000`.
 ## Notes
 
 - The main UI intentionally stays simple: original text, plain-language result, convert, clear, copy, and compare.
+- The rewrite form includes optional audience, purpose, and document type fields so the prompt can adapt the rewrite without changing the legal or practical effect.
 - The result view includes compact tabs for the quality checklist, change notes, and unclear source sections.
 - Draft text autosaves in local storage so refreshes do not wipe the current work.
 - The footer disclaimer is built into the app: the tool improves clarity, but it does not verify legal, medical, or factual accuracy.

@@ -1,7 +1,8 @@
 import {
-  createDefaultQualityChecks,
+  createDefaultQualityChecklist,
   type DifficultTerm,
   type PlainLanguageResponse,
+  type RewriteRequest,
 } from "@/lib/types";
 
 type ReplacementRule = {
@@ -111,6 +112,29 @@ const ambiguousPhrases = [
   "promptly",
 ];
 
+const legalEffectSignals = [
+  {
+    source: /\b(shall|must|required to|is required to|has to)\b/i,
+    rewritten: /\b(must|required to|is required to|has to)\b/i,
+  },
+  {
+    source: /\b(may|can|is permitted to|allowed to)\b/i,
+    rewritten: /\b(may|can|is permitted to|allowed to)\b/i,
+  },
+  {
+    source: /\b(must not|may not|cannot|can't|prohibited|not permitted)\b/i,
+    rewritten: /\b(must not|may not|cannot|can't|prohibited|not permitted)\b/i,
+  },
+  {
+    source: /\b(if|unless|except|provided that|subject to)\b/i,
+    rewritten: /\b(if|unless|except|provided that|subject to)\b/i,
+  },
+  {
+    source: /\b(penalty|penalties|termination|terminated|revoke|revoked|suspend|suspended|liable|consequence)\b/i,
+    rewritten: /\b(penalty|penalties|termination|terminated|revoke|revoked|suspend|suspended|liable|consequence)\b/i,
+  },
+];
+
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -129,6 +153,19 @@ function preserveMatchCase(match: string, replacement: string) {
 
 function normalizeSpaces(value: string) {
   return value.replace(/\s+/g, " ").replace(/\s+([,.;:!?])/g, "$1").trim();
+}
+
+function normalizeRewriteRequest(input: RewriteRequest | string): RewriteRequest {
+  if (typeof input === "string") {
+    return { sourceText: input };
+  }
+
+  return {
+    sourceText: input.sourceText,
+    audience: input.audience?.trim() || undefined,
+    purpose: input.purpose?.trim() || undefined,
+    documentType: input.documentType?.trim() || undefined,
+  };
 }
 
 function ensureSentenceEnding(value: string) {
@@ -305,10 +342,45 @@ function looksLikeEnglish(value: string) {
   return markers.filter((marker) => lowered.includes(marker)).length >= 3;
 }
 
+function selectSectionLabels(sourceText: string, documentType?: string) {
+  const context = `${documentType ?? ""} ${sourceText}`.toLowerCase();
+
+  if (
+    /\b(procedure|process|complaint|appeal|application|instruction|steps?)\b/.test(
+      context,
+    )
+  ) {
+    return {
+      details: "Important details",
+      intro: "Main point",
+      actions: "Steps to take",
+    };
+  }
+
+  if (
+    /\b(policy|rule|rules|terms|conditions|notice|compliance|eligibility)\b/.test(
+      context,
+    )
+  ) {
+    return {
+      details: "Important details",
+      intro: "Main point",
+      actions: "Key rules",
+    };
+  }
+
+  return {
+    details: "Important details",
+    intro: "Main point",
+    actions: "What you need to do",
+  };
+}
+
 function buildPlainText(
   sourceText: string,
   rewrittenParagraphs: string[],
   rewrites: SentenceRewrite[],
+  documentType?: string,
 ) {
   const hasListFormatting = /^\s*(?:[-*•]|\d+\.)\s+/m.test(sourceText);
   const canAddEnglishHeadings = looksLikeEnglish(sourceText);
@@ -316,6 +388,7 @@ function buildPlainText(
   const detailSentences = rewrites
     .filter((item) => !item.instruction)
     .map((item) => item.rewritten);
+  const labels = selectSectionLabels(sourceText, documentType);
 
   if (
     canAddEnglishHeadings &&
@@ -328,18 +401,18 @@ function buildPlainText(
     const sections: string[] = [];
 
     if (introSentences.length > 0) {
-      sections.push(`Main point\n\n${introSentences.join(" ")}`);
+      sections.push(`${labels.intro}\n\n${introSentences.join(" ")}`);
     }
 
     sections.push(
-      `What you need to do\n\n${instructionRewrites
+      `${labels.actions}\n\n${instructionRewrites
         .map((item) => `- ${item.rewritten.replace(/^[-*•]\s*/, "")}`)
         .join("\n")}`,
     );
 
     if (remainingDetails.length > 0) {
       sections.push(
-        `Important details\n\n${chunkSentences(remainingDetails, 2).join("\n\n")}`,
+        `${labels.details}\n\n${chunkSentences(remainingDetails, 2).join("\n\n")}`,
       );
     }
 
@@ -352,10 +425,10 @@ function buildPlainText(
     (rewrittenParagraphs.length > 1 || sourceText.length > 480)
   ) {
     const [firstParagraph, ...rest] = rewrittenParagraphs;
-    const sections = [`Main point\n\n${firstParagraph}`];
+    const sections = [`${labels.intro}\n\n${firstParagraph}`];
 
     if (rest.length > 0) {
-      sections.push(`Details\n\n${rest.join("\n\n")}`);
+      sections.push(`${labels.details}\n\n${rest.join("\n\n")}`);
     }
 
     return sections.join("\n\n");
@@ -377,6 +450,7 @@ function buildWhatChanged(
   longSentenceCount: number,
   plainText: string,
   instructionCount: number,
+  actionHeading: string,
 ) {
   const changes: string[] = [];
 
@@ -388,7 +462,7 @@ function buildWhatChanged(
     changes.push("Split long sentences into shorter parts to improve readability.");
   }
 
-  if (instructionCount >= 2 && plainText.includes("What you need to do")) {
+  if (instructionCount >= 2 && plainText.includes(actionHeading)) {
     changes.push("Grouped key actions into a clearer step-by-step section.");
   }
 
@@ -403,15 +477,19 @@ function buildWhatChanged(
   return changes;
 }
 
-function buildSuggestions(sourceText: string, unclearParts: string[]) {
+function buildSuggestions(sourceText: string, unclearSections: string[]) {
   const suggestions: string[] = [];
 
-  if (unclearParts.length > 0) {
-    suggestions.push("Replace vague timing or conditions with specific dates, deadlines, or thresholds.");
+  if (unclearSections.length > 0) {
+    suggestions.push(
+      "Replace vague timing or conditions with specific dates, deadlines, or thresholds.",
+    );
   }
 
   if (sourceText.length > 900) {
-    suggestions.push("Break the original into shorter sections with one topic per paragraph.");
+    suggestions.push(
+      "Break the original into shorter sections with one topic per paragraph.",
+    );
   }
 
   if (!/\n{2,}/.test(sourceText) && sourceText.length > 320) {
@@ -432,8 +510,55 @@ function buildCompareNotes(rewrites: SentenceRewrite[]) {
     }));
 }
 
-export function generateMockRewrite(sourceText: string): PlainLanguageResponse {
-  const normalizedSource = sourceText.replace(/\r\n/g, "\n").trim();
+function countWords(value: string) {
+  const words = value.match(/\b[\p{L}\p{N}'-]+\b/gu);
+  return words?.length ?? 0;
+}
+
+function extractDateAndDeadlineTokens(value: string) {
+  const matches = value.match(
+    /\b(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|january|february|march|april|may|june|july|august|september|october|november|december)\b|\b\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?\b|\b\d{4}\b|\b\d+(?:,\d{3})*(?:\.\d+)?\s+(?:business\s+)?(?:day|days|week|weeks|month|months|year|years|hour|hours|calendar days?)\b|\b\d{1,2}:\d{2}\b/gi,
+  );
+
+  return [...new Set((matches ?? []).map((item) => item.toLowerCase()))];
+}
+
+function hasPreservedDateAndDeadlineSignals(sourceText: string, plainText: string) {
+  const tokens = extractDateAndDeadlineTokens(sourceText);
+
+  if (tokens.length === 0) {
+    return true;
+  }
+
+  const loweredPlainText = plainText.toLowerCase();
+  return tokens.every((token) => loweredPlainText.includes(token));
+}
+
+function hasPreservedLegalEffectSignals(sourceText: string, plainText: string) {
+  return legalEffectSignals.every(
+    ({ source, rewritten }) => !source.test(sourceText) || rewritten.test(plainText),
+  );
+}
+
+function hasAudienceFit(plainText: string, difficultTerms: DifficultTerm[]) {
+  const sentences = splitIntoSentences(plainText);
+
+  if (sentences.length === 0) {
+    return false;
+  }
+
+  const averageWordsPerSentence = countWords(plainText) / sentences.length;
+  return (
+    averageWordsPerSentence <= 22 &&
+    (difficultTerms.length > 0 || averageWordsPerSentence <= 18)
+  );
+}
+
+export function generateMockRewrite(
+  input: RewriteRequest | string,
+): PlainLanguageResponse {
+  const request = normalizeRewriteRequest(input);
+  const normalizedSource = request.sourceText.replace(/\r\n/g, "\n").trim();
   const paragraphs = normalizedSource
     .split(/\n{2,}/)
     .map((item) => item.trim())
@@ -451,50 +576,68 @@ export function generateMockRewrite(sourceText: string): PlainLanguageResponse {
   }
 
   const uniqueTerms = dedupeDifficultTerms(difficultTerms);
-  const unclearParts = buildUnclearParts(normalizedSource);
+  const unclearSections = buildUnclearParts(normalizedSource);
   const longSentenceCount = splitIntoSentences(normalizedSource).filter(
     (sentence) => sentence.length > 165,
   ).length;
-  const plainText = buildPlainText(normalizedSource, rewrittenParagraphs, sentenceRewrites);
-  const qualityChecks = createDefaultQualityChecks("review_needed");
+  const labels = selectSectionLabels(normalizedSource, request.documentType);
+  const plainText = buildPlainText(
+    normalizedSource,
+    rewrittenParagraphs,
+    sentenceRewrites,
+    request.documentType,
+  );
+  const qualityChecklist = createDefaultQualityChecklist("review_needed");
 
-  qualityChecks.mainMessageClear = plainText.length > 0 ? "pass" : "review_needed";
-  qualityChecks.structureImproved =
-    plainText.includes("Main point") ||
-    plainText.includes("What you need to do") ||
-    rewrittenParagraphs.length > 1
-      ? "pass"
-      : "review_needed";
-  qualityChecks.jargonReduced =
-    uniqueTerms.length > 0 || replacementRules.every((rule) => !normalizedSource.toLowerCase().includes(rule.original))
-      ? "pass"
-      : "review_needed";
-  qualityChecks.longSentencesSimplified =
-    longSentenceCount === 0 || sentenceRewrites.some((item) => item.changed)
-      ? "pass"
-      : "review_needed";
-  qualityChecks.actionPointsEasyToIdentify =
+  qualityChecklist.mainPointClear = plainText.length > 0 ? "pass" : "review_needed";
+  qualityChecklist.actionsClear =
     sentenceRewrites.some((item) => item.instruction)
-      ? plainText.includes("What you need to do")
+      ? plainText.includes(labels.actions)
         ? "pass"
         : "review_needed"
       : "pass";
+  qualityChecklist.datesAndDeadlinesPreserved = hasPreservedDateAndDeadlineSignals(
+    normalizedSource,
+    plainText,
+  )
+    ? "pass"
+    : "review_needed";
+  qualityChecklist.legalEffectPreserved = hasPreservedLegalEffectSignals(
+    normalizedSource,
+    plainText,
+  )
+    ? "pass"
+    : "review_needed";
+  qualityChecklist.jargonReduced = (
+    uniqueTerms.length > 0 ||
+    replacementRules.every(
+      (rule) => !normalizedSource.toLowerCase().includes(rule.original),
+    )
+  )
+    ? "pass"
+    : "review_needed";
+  qualityChecklist.audienceFit = (
+    hasAudienceFit(plainText, uniqueTerms) || rewrittenParagraphs.length > 1
+  )
+    ? "pass"
+    : "review_needed";
 
   return {
     plainText,
-    qualityChecks,
-    whatChanged: buildWhatChanged(
+    qualityChecklist,
+    changeNotes: buildWhatChanged(
       uniqueTerms,
       longSentenceCount,
       plainText,
       sentenceRewrites.filter((item) => item.instruction).length,
+      labels.actions,
     ),
     difficultTerms: uniqueTerms,
-    unclearParts,
-    suggestions: buildSuggestions(normalizedSource, unclearParts),
+    unclearSections,
+    suggestions: buildSuggestions(normalizedSource, unclearSections),
     compareNotes: buildCompareNotes(sentenceRewrites),
     ambiguityNote:
-      unclearParts.length > 0
+      unclearSections.length > 0
         ? "This section may still be unclear because the original text is ambiguous."
         : undefined,
     usedMock: true,

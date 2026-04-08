@@ -3,7 +3,7 @@ import {
   extractJsonObject,
   normalizePlainLanguageResponse,
 } from "@/lib/rewrite-schema";
-import type { PlainLanguageResponse } from "@/lib/types";
+import type { PlainLanguageResponse, RewriteRequest } from "@/lib/types";
 
 const OPENROUTER_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
 
@@ -73,7 +73,7 @@ export function hasOpenRouterConfig() {
 }
 
 export async function generateOpenRouterRewrite(
-  sourceText: string,
+  request: RewriteRequest,
 ): Promise<PlainLanguageResponse> {
   const apiKey = process.env.OPENROUTER_API_KEY;
   const model = process.env.OPENROUTER_MODEL;
@@ -104,7 +104,7 @@ export async function generateOpenRouterRewrite(
         },
         {
           role: "user",
-          content: buildPlainLanguageUserPrompt(sourceText),
+          content: buildPlainLanguageUserPrompt(request),
         },
       ],
     }),

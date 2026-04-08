@@ -1,8 +1,8 @@
 import {
   type DetailTab,
   type PlainLanguageResponse,
-  qualityCheckLabels,
-  qualityCheckOrder,
+  qualityChecklistLabels,
+  qualityChecklistOrder,
 } from "@/lib/types";
 
 type DetailTabsProps = {
@@ -57,15 +57,15 @@ export function DetailTabs({
 function QualityChecks({ result }: { result: PlainLanguageResponse }) {
   return (
     <div className="space-y-3">
-      {qualityCheckOrder.map((key) => {
-        const passed = result.qualityChecks[key] === "pass";
+      {qualityChecklistOrder.map((key) => {
+        const passed = result.qualityChecklist[key] === "pass";
 
         return (
           <div
             key={key}
             className="panel-card flex flex-col gap-2 rounded-2xl px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
           >
-            <p className="text-sm leading-6">{qualityCheckLabels[key]}</p>
+            <p className="text-sm leading-6">{qualityChecklistLabels[key]}</p>
             <span
               className={`${
                 passed ? "status-pass" : "status-review"
@@ -82,7 +82,7 @@ function QualityChecks({ result }: { result: PlainLanguageResponse }) {
 
 function WhatChanged({ result }: { result: PlainLanguageResponse }) {
   const hasContent =
-    result.whatChanged.length > 0 ||
+    result.changeNotes.length > 0 ||
     result.difficultTerms.length > 0 ||
     result.suggestions.length > 0;
 
@@ -96,13 +96,13 @@ function WhatChanged({ result }: { result: PlainLanguageResponse }) {
 
   return (
     <div className="space-y-5">
-      {result.whatChanged.length > 0 ? (
+      {result.changeNotes.length > 0 ? (
         <div>
           <p className="muted-copy text-xs font-semibold uppercase tracking-[0.2em]">
             What changed
           </p>
           <ul className="mt-3 space-y-2">
-            {result.whatChanged.map((item) => (
+            {result.changeNotes.map((item) => (
               <li
                 key={item}
                 className="panel-card rounded-2xl px-4 py-3 text-sm leading-6"
@@ -158,7 +158,7 @@ function WhatChanged({ result }: { result: PlainLanguageResponse }) {
 }
 
 function UnclearParts({ result }: { result: PlainLanguageResponse }) {
-  if (result.unclearParts.length === 0 && !result.ambiguityNote) {
+  if (result.unclearSections.length === 0 && !result.ambiguityNote) {
     return (
       <p className="muted-copy text-sm leading-6">
         No obvious unclear sections were flagged in the original text.
@@ -173,7 +173,7 @@ function UnclearParts({ result }: { result: PlainLanguageResponse }) {
           {result.ambiguityNote}
         </div>
       ) : null}
-      {result.unclearParts.map((item) => (
+      {result.unclearSections.map((item) => (
         <div
           key={item}
           className="panel-card rounded-2xl px-4 py-3 text-sm leading-6"

@@ -15,15 +15,15 @@ import type { PlainLanguageResponse } from "@/lib/types";
 const sampleResponse: PlainLanguageResponse = {
   plainText:
     "Main point\n\nPeople must complete the form before Friday.\n\nDetails\n\nSend it to the department by email.",
-  qualityChecks: {
-    mainMessageClear: "pass",
-    structureImproved: "pass",
+  qualityChecklist: {
+    mainPointClear: "pass",
+    actionsClear: "pass",
+    datesAndDeadlinesPreserved: "pass",
+    legalEffectPreserved: "pass",
     jargonReduced: "pass",
-    longSentencesSimplified: "pass",
-    actionPointsEasyToIdentify: "pass",
-    importantMeaningPreserved: "review_needed",
+    audienceFit: "pass",
   },
-  whatChanged: ["Simplified the wording and clarified the deadline."],
+  changeNotes: ["Simplified the wording and clarified the deadline."],
   difficultTerms: [
     {
       original: "prior to",
@@ -31,7 +31,7 @@ const sampleResponse: PlainLanguageResponse = {
       explanation: "Uses a more familiar time reference.",
     },
   ],
-  unclearParts: [],
+  unclearSections: [],
   suggestions: ["Add a contact name if readers may need help."],
   compareNotes: [
     {
@@ -116,5 +116,37 @@ describe("TranslatorApp", () => {
 
     expect(screen.getByLabelText(/original text/i)).toHaveValue("");
     expect(window.localStorage.getItem(draftStorageKey)).toBeNull();
+  });
+
+  it("sends optional rewrite context fields with the request", async () => {
+    const user = userEvent.setup();
+    render(<TranslatorApp />);
+
+    await user.type(screen.getByLabelText(/audience/i), "Residents");
+    await user.type(
+      screen.getByLabelText(/purpose/i),
+      "Help people follow the notice correctly",
+    );
+    await user.type(screen.getByLabelText(/document type/i), "Formal notice");
+    await user.type(
+      screen.getByLabelText(/original text/i),
+      "Individuals shall complete the form prior to Friday.",
+    );
+    await user.click(
+      screen.getByRole("button", { name: /convert to plain language/i }),
+    );
+
+    await screen.findByDisplayValue(/People must complete the form before Friday/i);
+
+    const fetchMock = vi.mocked(global.fetch);
+    const requestOptions = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined;
+    const requestBody = JSON.parse(String(requestOptions?.body));
+
+    expect(requestBody).toMatchObject({
+      audience: "Residents",
+      purpose: "Help people follow the notice correctly",
+      documentType: "Formal notice",
+      sourceText: "Individuals shall complete the form prior to Friday.",
+    });
   });
 });

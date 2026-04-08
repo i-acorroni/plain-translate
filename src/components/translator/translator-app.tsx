@@ -14,6 +14,11 @@ function formatCount(value: number) {
   return new Intl.NumberFormat("en-US").format(value);
 }
 
+function trimOptionalInput(value: string) {
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
 function getStatusText(
   result: PlainLanguageResponse | null,
   isLoading: boolean,
@@ -56,6 +61,9 @@ function CopyIcon() {
 
 export function TranslatorApp() {
   const { value: sourceText, setValue: setSourceText, clear } = useLocalDraft("");
+  const [audience, setAudience] = useState("");
+  const [purpose, setPurpose] = useState("");
+  const [documentType, setDocumentType] = useState("");
   const [result, setResult] = useState<PlainLanguageResponse | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
@@ -115,7 +123,12 @@ export function TranslatorApp() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ sourceText }),
+        body: JSON.stringify({
+          sourceText,
+          audience: trimOptionalInput(audience),
+          purpose: trimOptionalInput(purpose),
+          documentType: trimOptionalInput(documentType),
+        }),
         signal: controller.signal,
       });
 
@@ -135,7 +148,7 @@ export function TranslatorApp() {
       startTransition(() => {
         setResult(payload as PlainLanguageResponse);
         setActiveTab(
-          (payload as PlainLanguageResponse).unclearParts.length > 0
+          (payload as PlainLanguageResponse).unclearSections.length > 0
             ? "unclear"
             : "quality",
         );
@@ -160,6 +173,9 @@ export function TranslatorApp() {
   function handleClear() {
     abortRef.current?.abort();
     clear();
+    setAudience("");
+    setPurpose("");
+    setDocumentType("");
     setResult(null);
     setErrorMessage("");
     setCopyState("idle");
@@ -208,6 +224,44 @@ export function TranslatorApp() {
                   Paste or type the source material.
                 </p>
               </div>
+            </div>
+            <div className="mb-4 grid gap-3 sm:grid-cols-3">
+              <label className="block">
+                <span className="muted-copy text-xs font-semibold uppercase tracking-[0.18em]">
+                  Audience
+                </span>
+                <input
+                  type="text"
+                  value={audience}
+                  onChange={(event) => setAudience(event.target.value)}
+                  placeholder="General public"
+                  className="editor-frame mt-2 w-full rounded-2xl px-4 py-3 text-sm outline-none"
+                />
+              </label>
+              <label className="block">
+                <span className="muted-copy text-xs font-semibold uppercase tracking-[0.18em]">
+                  Purpose
+                </span>
+                <input
+                  type="text"
+                  value={purpose}
+                  onChange={(event) => setPurpose(event.target.value)}
+                  placeholder="Help readers act correctly"
+                  className="editor-frame mt-2 w-full rounded-2xl px-4 py-3 text-sm outline-none"
+                />
+              </label>
+              <label className="block">
+                <span className="muted-copy text-xs font-semibold uppercase tracking-[0.18em]">
+                  Document type
+                </span>
+                <input
+                  type="text"
+                  value={documentType}
+                  onChange={(event) => setDocumentType(event.target.value)}
+                  placeholder="Policy, notice, procedure..."
+                  className="editor-frame mt-2 w-full rounded-2xl px-4 py-3 text-sm outline-none"
+                />
+              </label>
             </div>
             <div
               className={`editor-frame flex ${editorHeightClass} flex-col overflow-hidden rounded-[28px] p-4 sm:p-5`}

@@ -1,10 +1,12 @@
 import {
-  createDefaultQualityChecks,
+  createDefaultQualityChecklist,
   type CompareNote,
   type DifficultTerm,
   type PlainLanguageResponse,
+  type QualityChecklist,
+  type QualityChecklistKey,
   type RewriteRequest,
-  qualityCheckOrder,
+  qualityChecklistOrder,
 } from "@/lib/types";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -13,6 +15,27 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function toOptionalString(value: unknown) {
   return typeof value === "string" ? value.trim() : undefined;
+}
+
+function parseOptionalInput(
+  value: unknown,
+  label: string,
+  maxLength: number,
+) {
+  const parsed = toOptionalString(value);
+
+  if (!parsed) {
+    return { ok: true as const, value: undefined };
+  }
+
+  if (parsed.length > maxLength) {
+    return {
+      ok: false as const,
+      error: `${label} is too long for this version of the tool.`,
+    };
+  }
+
+  return { ok: true as const, value: parsed };
 }
 
 function toStringArray(value: unknown) {
@@ -84,15 +107,32 @@ function toCompareNotes(value: unknown): CompareNote[] {
   return notes;
 }
 
-function toQualityChecks(value: unknown) {
-  const record = isRecord(value) ? value : {};
-  const checks = createDefaultQualityChecks();
+const qualityChecklistAliases: Record<QualityChecklistKey, string[]> = {
+  mainPointClear: ["mainPointClear", "mainMessageClear"],
+  actionsClear: ["actionsClear", "actionPointsEasyToIdentify"],
+  datesAndDeadlinesPreserved: ["datesAndDeadlinesPreserved"],
+  legalEffectPreserved: ["legalEffectPreserved", "importantMeaningPreserved"],
+  jargonReduced: ["jargonReduced"],
+  audienceFit: ["audienceFit"],
+};
 
-  for (const key of qualityCheckOrder) {
-    checks[key] = record[key] === "pass" ? "pass" : "review_needed";
+function toQualityChecklist(value: unknown): QualityChecklist {
+  const record = isRecord(value) ? value : {};
+  const checklist = createDefaultQualityChecklist();
+
+  for (const key of qualityChecklistOrder) {
+    const matchedKey = qualityChecklistAliases[key].find(
+      (alias) => record[alias] === "pass" || record[alias] === "review_needed",
+    );
+
+    if (!matchedKey) {
+      continue;
+    }
+
+    checklist[key] = record[matchedKey] === "pass" ? "pass" : "review_needed";
   }
 
-  return checks;
+  return checklist;
 }
 
 export function parseRewriteRequest(
@@ -121,9 +161,29 @@ export function parseRewriteRequest(
     };
   }
 
+  const audience = parseOptionalInput(value.audience, "Audience", 240);
+  if (!audience.ok) {
+    return audience;
+  }
+
+  const purpose = parseOptionalInput(value.purpose, "Purpose", 240);
+  if (!purpose.ok) {
+    return purpose;
+  }
+
+  const documentType = parseOptionalInput(value.documentType, "Document type", 120);
+  if (!documentType.ok) {
+    return documentType;
+  }
+
   return {
     ok: true,
-    value: { sourceText },
+    value: {
+      sourceText,
+      audience: audience.value,
+      purpose: purpose.value,
+      documentType: documentType.value,
+    },
   };
 }
 
@@ -143,10 +203,10 @@ export function normalizePlainLanguageResponse(
 
   return {
     plainText,
-    qualityChecks: toQualityChecks(value.qualityChecks),
-    whatChanged: toStringArray(value.whatChanged),
+    qualityChecklist: toQualityChecklist(value.qualityChecklist ?? value.qualityChecks),
+    changeNotes: toStringArray(value.changeNotes ?? value.whatChanged),
     difficultTerms: toDifficultTerms(value.difficultTerms),
-    unclearParts: toStringArray(value.unclearParts),
+    unclearSections: toStringArray(value.unclearSections ?? value.unclearParts),
     suggestions: toStringArray(value.suggestions),
     compareNotes: toCompareNotes(value.compareNotes),
     ambiguityNote: toOptionalString(value.ambiguityNote),

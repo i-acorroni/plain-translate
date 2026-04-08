@@ -23,17 +23,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
 
-  const { sourceText } = parsed.value;
+  const rewriteRequest = parsed.value;
 
   if (!hasOpenRouterConfig()) {
-    return NextResponse.json(generateMockRewrite(sourceText));
+    return NextResponse.json(generateMockRewrite(rewriteRequest));
   }
 
   try {
-    const response = await generateOpenRouterRewrite(sourceText);
+    const response = await generateOpenRouterRewrite(rewriteRequest);
     return NextResponse.json(response);
   } catch (error) {
     console.error("OpenRouter rewrite failed, returning mock output instead.", error);
-    return NextResponse.json(generateMockRewrite(sourceText));
+    return NextResponse.json(generateMockRewrite(rewriteRequest));
   }
 }
