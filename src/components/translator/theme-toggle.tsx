@@ -1,71 +1,12 @@
 "use client";
 
 import { useEffect, useSyncExternalStore } from "react";
-import {
-  loadTheme,
-  saveTheme,
-  themeStorageKey,
-  type ThemeMode,
-} from "@/lib/storage";
-
-const listeners = new Set<() => void>();
-
-function emitThemeChange() {
-  listeners.forEach((listener) => listener());
-}
-
-function setDocumentTheme(theme: ThemeMode) {
-  document.documentElement.dataset.theme = theme;
-}
-
-function subscribe(listener: () => void) {
-  listeners.add(listener);
-
-  if (typeof window === "undefined") {
-    return () => {
-      listeners.delete(listener);
-    };
-  }
-
-  const onStorage = (event: StorageEvent) => {
-    if (event.key === themeStorageKey) {
-      listener();
-    }
-  };
-  const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-  const onMediaChange = () => {
-    listener();
-  };
-
-  window.addEventListener("storage", onStorage);
-  mediaQuery.addEventListener("change", onMediaChange);
-
-  return () => {
-    listeners.delete(listener);
-    window.removeEventListener("storage", onStorage);
-    mediaQuery.removeEventListener("change", onMediaChange);
-  };
-}
-
-function getThemeSnapshot(): ThemeMode {
-  if (typeof window === "undefined") {
-    return "light";
-  }
-
-  const storedTheme = loadTheme();
-
-  if (storedTheme) {
-    return storedTheme;
-  }
-
-  return window.matchMedia("(prefers-color-scheme: dark)").matches
-    ? "dark"
-    : "light";
-}
+import { applyTheme, getThemeSnapshot, setDocumentTheme, subscribeToTheme } from "@/lib/theme-store";
+import type { ThemeMode } from "@/lib/storage";
 
 export function ThemeToggle() {
   const theme = useSyncExternalStore<ThemeMode>(
-    subscribe,
+    subscribeToTheme,
     getThemeSnapshot,
     () => "light",
   );
@@ -76,9 +17,7 @@ export function ThemeToggle() {
 
   function toggleTheme() {
     const nextTheme = theme === "light" ? "dark" : "light";
-    setDocumentTheme(nextTheme);
-    saveTheme(nextTheme);
-    emitThemeChange();
+    applyTheme(nextTheme);
   }
 
   return (

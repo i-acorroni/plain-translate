@@ -1,10 +1,22 @@
+"use client";
+
 import Image from "next/image";
+import { useSyncExternalStore } from "react";
+import { getThemeSnapshot, subscribeToTheme } from "@/lib/theme-store";
+import type { ThemeMode } from "@/lib/storage";
 
 export function TranslatorLogo() {
+  const theme = useSyncExternalStore<ThemeMode>(
+    subscribeToTheme,
+    getThemeSnapshot,
+    () => "light",
+  );
+  const logoSrc = theme === "dark" ? "/lingua-logo-dark.svg" : "/lingua-logo.svg";
+
   return (
-    <div className="inline-flex items-center" aria-label="Plain Language Translator">
+    <div className="inline-flex items-center">
       <Image
-        src="/lingua-logo.svg"
+        src={logoSrc}
         alt="Plain Language Translator"
         width={1838}
         height={691}
